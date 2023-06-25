@@ -1,3 +1,5 @@
+;Autohotkey version 2
+
 #DllLoad NtosKrnl.exe	;for QueryPerformanceCounter (I am using Windows.)
 InstallKeybdHook
 #UseHook
