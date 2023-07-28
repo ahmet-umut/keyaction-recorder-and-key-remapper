@@ -1,319 +1,426 @@
-;Autohotkey version 2
+;;using KRaKR constructor.py to generate the key up-down pairs
+layo:=0	;layout: 0 is my laptop's layout, 1 is my external keyboard's layout
 
-#DllLoad NtosKrnl.exe	;for QueryPerformanceCounter (I am using Windows.)
-InstallKeybdHook
+#DllLoad NtosKrnl.exe
+InstallKeybdHook 
+;;InstallMouseHook
 #UseHook
 
-fileappend "Log starts.`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+SetKeyDelay 0	;because we send the key's signals when a key is pressed. The default delay may slow down the signals
+A_MaxHotkeysPerInterval:=77
+A_HotkeyInterval:=1111
 
-SetKeyDelay 0	;for remappings to feel normal
+logfile:="C:\filerings of john\keyaction records\rest.txt"
 
-DllCall("QueryPerformanceCounter", "Int64*", &tim0 := 0)	;set time0 to take delta time
+fileappend DateDiff(A_NowUTC,"1970","Seconds") "`n", logfile, "UTF-8"
 
-time() {	;delta_t*100ns has passed since the line 9 executed
+DllCall("QueryPerformanceCounter", "Int64*", &tim0 := 0)	;set time0 to take dt
+
+time() {	;dt*100ns has passed since the line 7 executed
 	DllCall("QueryPerformanceCounter", "Int64*", &tim := 0)
-	Return tim - tim0	;delta_t
+	Return tim - tim0	;dt
 	}
 
-;;special shortcuts for myself...
+
+cubr 	:= GetCurrentBrightNess()	;current brightness
+
+; brightness
+#WheelDown::
+	{
+	global cubr
+	cubr := Max(0, cubr-5)
+	ChangeBrightness() ; decrease brightness
+	}
+#WheelUp::
+	{
+	global cubr
+	cubr := Min(100, cubr+5)
+	ChangeBrightness() ; decrease brightness
+	}
+
+; Functions
+g := Gui("+AlwaysOnTop -Caption +ToolWindow")
+g.AddProgress("w200 h20 cBlue vbar", 80)
+gs := 0
+showg()
+	{
+	global gs
+	if (gs>0)
+		gs--
+	else
+		g.Show("Hide")
+	}
+SetTimer(showg, 55)
+ChangeBrightness(  )
+{
+	global gs
+	if ( cubr >= 0 && cubr <= 100 )
+	{
+		for property in ComObjGet( "winmgmts:\\.\root\WMI" ).ExecQuery( "SELECT * FROM WmiMonitorBrightnessMethods" )
+			property.WmiSetBrightness( 0, cubr )	;1 is the timeout. What is that?
+	}
+	g["bar"].Value := cubr
+	g.Show("NA")
+	gs:=22
+}
+
+GetCurrentBrightNess()
+{
+	for property in ComObjGet( "winmgmts:\\.\root\WMI" ).ExecQuery( "SELECT * FROM WmiMonitorBrightness" )
+		currentBrightness := property.CurrentBrightness	
+
+	return currentBrightness
+}
+
+
+;;special shortcuts...
+
 ^"::	{
-	SendText "->"	;Turkish keyboard does not have > character (shift+<) so -> is not ergonomic in C and C++
-	fileappend time() "	->`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+	SendText "->"
+	fileappend time() " ->`n", logfile, "UTF-8"
 	}
-insert:: {	;Turkish keyboard does not have = character and I do not use insert... remap insert to =
+insert:: {
 	SendText "="
-	fileappend time() "	=`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+	fileappend time() "	=`n", logfile, "UTF-8"
 	}
-~*insert::	fileappend time() "	in	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"	
-*~insert up::	fileappend time() "	in	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-#insert:: {	;Turkish keyboard does not have ! character without modifiers...
+#insert:: {
 	SendText "!="
-	fileappend time() "	!=`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+	fileappend time() "	!=`n", logfile, "UTF-8"
 	}
-*PrintScreen:: {	;My keyboard does not have the "end" key without modifiers
+~*insert::	fileappend time() "	in	do`n", logfile, "UTF-8"
+*~insert up::	fileappend time() "	in	up`n", logfile, "UTF-8"
+
+*PrintScreen:: {	;end
 	Send "{Blind}{End down}"
-	fileappend time() "	end	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+	fileappend time() "	end	do`n", logfile, "UTF-8"
 	}
 *PrintScreen up:: {
 	Send "{Blind}{End up}"
-	fileappend time() "	end	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+	fileappend time() "	end	up`n", logfile, "UTF-8"
 	}
-~*End::		fileappend time() "	end	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*End up::	fileappend time() "	end	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*End::		fileappend time() "	end	do`n", logfile, "UTF-8"
+~*End up::	fileappend time() "	end	up`n", logfile, "UTF-8"
 
+#CapsLock::
+	{
+	if GetKeyState("CapsLock","T")
+		{
+		SetCapsLockState 0
+		fileappend time() "	cl	0`n", logfile, "UTF-8"
+		}
+	else
+		{
+		SetCapsLockState 1
+		fileappend time() "	cl	1`n", logfile, "UTF-8"
+		}
+	}
+#HotIf !layo
+*CapsLock::	;home
+	{
+	Send "{Blind}{Home down}"
+	fileappend time() "	ho	do`n", logfile, "UTF-8"
+	}
+*CapsLock up:: {	;home
+	Send "{Blind}{Home up}"
+	fileappend time() "	ho	up`n", logfile, "UTF-8"
+	}
+#HotIf
+#HotIf layo
+~*CapsLock::		fileappend time() "	cl	do`n", logfile, "UTF-8"
+~*CapsLock up::	fileappend time() "	cl	up`n", logfile, "UTF-8"
+#HotIf
 
-;time	key_name	(up|down)\n 
-;;	real time = time*100n
+~*Home::		fileappend time() "	ho	do`n", logfile, "UTF-8"
+~*Home up::	fileappend time() "	ho	up`n", logfile, "UTF-8"
 
-;All code below is for logging the keyactions.
+#p:: {	;normally it pops a screen to duplicate the screen etc...	now click that button with ctrl then it works
+	Send "{F5 down}"
+	fileappend time() "	f5	do	`n", logfile, "UTF-8"
+	}
+#p up:: {	;normally it pops a screen to duplicate the screen etc...
+	Send "{F5 up}"
+	fileappend time() "	f5	up	`n", logfile, "UTF-8"
+	}
 
-*~LButton::		fileappend time() "	so	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-*~LButton up::	fileappend time() "	so	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RButton::		fileappend time() "	sa	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RButton up::	fileappend time() "	sa	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+NumLock::
+	{	;for build fn. in sublime text, and anything
+	Send "{F7 down}"
+	fileappend time() "	f7	do	`n", logfile, "UTF-8"
+	}
+NumLock up::
+	{
+	Send "{F7 up}"
+	fileappend time() "	f7	up	`n", logfile, "UTF-8"
+	}
+~*NumLock::	fileappend time() "	nl	up`n", logfile, "UTF-8"
+~*NumLock up::	fileappend time() "	nl	up`n", logfile, "UTF-8"
 
-~*XButton1::		fileappend time() "	ge	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*XButton1 up::	fileappend time() "	ge	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*XButton2::		fileappend time() "	il	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*XButton2 up::	fileappend time() "	il	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+;;special shortcuts...
 
-~*0::		fileappend time() "	0	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*0 up::	fileappend time() "	0	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*1::		fileappend time() "	1	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*1 up::	fileappend time() "	1	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*2::		fileappend time() "	2	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*2 up::	fileappend time() "	2	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*3::		fileappend time() "	3	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*3 up::	fileappend time() "	3	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*4::		fileappend time() "	4	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*4 up::	fileappend time() "	4	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*5::		fileappend time() "	5	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*5 up::	fileappend time() "	5	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*6::		fileappend time() "	6	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*6 up::	fileappend time() "	6	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*7::		fileappend time() "	7	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*7 up::	fileappend time() "	7	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*8::		fileappend time() "	8	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*8 up::	fileappend time() "	8	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*9::		fileappend time() "	9	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*9 up::	fileappend time() "	9	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+;time	key name	(up|down)		 
+;	real time = time*100n
 
-~*q::		fileappend time() "	q	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*q up::	fileappend time() "	q	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*w::		fileappend time() "	w	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*w up::	fileappend time() "	w	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*e::		fileappend time() "	e	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*e up::	fileappend time() "	e	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*r::		fileappend time() "	r	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*r up::	fileappend time() "	r	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*t::		fileappend time() "	t	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*t up::	fileappend time() "	t	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*y::		fileappend time() "	y	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*y up::	fileappend time() "	y	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*u::		fileappend time() "	u	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*u up::	fileappend time() "	u	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*o::		fileappend time() "	o	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*o up::	fileappend time() "	o	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*p::		fileappend time() "	p	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*p up::	fileappend time() "	p	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*a::		fileappend time() "	a	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*a up::	fileappend time() "	a	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*s::		fileappend time() "	s	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*s up::	fileappend time() "	s	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*d::		fileappend time() "	d	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*d up::	fileappend time() "	d	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*f::		fileappend time() "	f	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*f up::	fileappend time() "	f	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*g::		fileappend time() "	g	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*g up::	fileappend time() "	g	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*h::		fileappend time() "	h	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*h up::	fileappend time() "	h	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*j::		fileappend time() "	j	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*j up::	fileappend time() "	j	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*k::		fileappend time() "	k	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*k up::	fileappend time() "	k	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*l::		fileappend time() "	l	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*l up::	fileappend time() "	l	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*z::		fileappend time() "	z	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*z up::	fileappend time() "	z	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*x::		fileappend time() "	x	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*x up::	fileappend time() "	x	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*c::		fileappend time() "	c	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*c up::	fileappend time() "	c	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*v::		fileappend time() "	v	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*v up::	fileappend time() "	v	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*b::		fileappend time() "	b	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*b up::	fileappend time() "	b	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*n::		fileappend time() "	n	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*n up::	fileappend time() "	n	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*m::		fileappend time() "	m	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*m up::	fileappend time() "	m	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Sleep::		fileappend time() "	uy	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Sleep up::	fileappend time() "	uy	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
 
-~*Space::		fileappend time() "	bo	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Space up::	fileappend time() "	bo	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+*~LButton::		fileappend time() "	so	do`n", logfile, "UTF-8"
+*~LButton up::	fileappend time() "	so	up`n", logfile, "UTF-8"
+~*RButton::		fileappend time() "	sa	do`n", logfile, "UTF-8"
+~*RButton up::	fileappend time() "	sa	up`n", logfile, "UTF-8"
 
-~*Tab::		fileappend time() "	ta	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Tab up::	fileappend time() "	ta	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*XButton1::		fileappend time() "	ge	do`n", logfile, "UTF-8"
+~*XButton1 up::	fileappend time() "	ge	up`n", logfile, "UTF-8"
+~*XButton2::		fileappend time() "	il	do`n", logfile, "UTF-8"
+~*XButton2 up::	fileappend time() "	il	up`n", logfile, "UTF-8"
 
-~*Enter::		fileappend time() "	er	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Enter up::	fileappend time() "	er	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*0::		fileappend time() "	0	do`n", logfile, "UTF-8"
+~*0 up::	fileappend time() "	0	up`n", logfile, "UTF-8"
+~*1::		fileappend time() "	1	do`n", logfile, "UTF-8"
+~*1 up::	fileappend time() "	1	up`n", logfile, "UTF-8"
+~*2::		fileappend time() "	2	do`n", logfile, "UTF-8"
+~*2 up::	fileappend time() "	2	up`n", logfile, "UTF-8"
+~*3::		fileappend time() "	3	do`n", logfile, "UTF-8"
+~*3 up::	fileappend time() "	3	up`n", logfile, "UTF-8"
+~*4::		fileappend time() "	4	do`n", logfile, "UTF-8"
+~*4 up::	fileappend time() "	4	up`n", logfile, "UTF-8"
+~*5::		fileappend time() "	5	do`n", logfile, "UTF-8"
+~*5 up::	fileappend time() "	5	up`n", logfile, "UTF-8"
+~*6::		fileappend time() "	6	do`n", logfile, "UTF-8"
+~*6 up::	fileappend time() "	6	up`n", logfile, "UTF-8"
+~*7::		fileappend time() "	7	do`n", logfile, "UTF-8"
+~*7 up::	fileappend time() "	7	up`n", logfile, "UTF-8"
+~*8::		fileappend time() "	8	do`n", logfile, "UTF-8"
+~*8 up::	fileappend time() "	8	up`n", logfile, "UTF-8"
+~*9::		fileappend time() "	9	do`n", logfile, "UTF-8"
+~*9 up::	fileappend time() "	9	up`n", logfile, "UTF-8"
 
-~*Esc::		fileappend time() "	es	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Esc up::	fileappend time() "	es	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Space::		fileappend time() "	bo	do`n", logfile, "UTF-8"
+~*Space up::	fileappend time() "	bo	up`n", logfile, "UTF-8"
+
+~*Tab::		fileappend time() "	ta	do`n", logfile, "UTF-8"
+~*Tab up::	fileappend time() "	ta	up`n", logfile, "UTF-8"
+
+~*Enter::		fileappend time() "	er	do`n", logfile, "UTF-8"
+~*Enter up::	fileappend time() "	er	up`n", logfile, "UTF-8"
+
+~*Esc::		fileappend time() "	es	do`n", logfile, "UTF-8"
+~*Esc up::	fileappend time() "	es	up`n", logfile, "UTF-8"
 	
-~*Backspace::		fileappend time() "	<-	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Backspace up::	fileappend time() "	<-	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Backspace::		fileappend time() "	<-	do`n", logfile, "UTF-8"
+~*Backspace up::	fileappend time() "	<-	up`n", logfile, "UTF-8"
 
-~*Up::		fileappend time() "	yu	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Up up::	fileappend time() "	yu	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Down::		fileappend time() "	aş	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Down up::	fileappend time() "	aş	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Left::		fileappend time() "	so	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Left up::	fileappend time() "	so	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Right::		fileappend time() "	sa	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Right up::	fileappend time() "	sa	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Up::		fileappend time() "	up	do`n", logfile, "UTF-8"
+~*Up up::	fileappend time() "	up	up`n", logfile, "UTF-8"
+~*Down::		fileappend time() "	do	do`n", logfile, "UTF-8"
+~*Down up::	fileappend time() "	do	up`n", logfile, "UTF-8"
+~*Left::		fileappend time() "	le	do`n", logfile, "UTF-8"
+~*Left up::	fileappend time() "	le	up`n", logfile, "UTF-8"
+~*Right::		fileappend time() "	ri	do`n", logfile, "UTF-8"
+~*Right up::	fileappend time() "	ri	up`n", logfile, "UTF-8"
 
-~*Numpad0::		fileappend time() "	n0	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad0 up::	fileappend time() "	n0	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad1::		fileappend time() "	n1	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad1 up::	fileappend time() "	n1	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad2::		fileappend time() "	n2	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad2 up::	fileappend time() "	n2	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad3::		fileappend time() "	n3	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad3 up::	fileappend time() "	n3	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad4::		fileappend time() "	n4	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad4 up::	fileappend time() "	n4	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad5::		fileappend time() "	n5	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad5 up::	fileappend time() "	n5	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad6::		fileappend time() "	n6	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad6 up::	fileappend time() "	n6	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad7::		fileappend time() "	n7	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad7 up::	fileappend time() "	n7	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad8::		fileappend time() "	n8	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad8 up::	fileappend time() "	n8	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad9::		fileappend time() "	n9	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Numpad9 up::	fileappend time() "	n9	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Numpad0::		fileappend time() "	n0	do`n", logfile, "UTF-8"
+~*Numpad0 up::	fileappend time() "	n0	up`n", logfile, "UTF-8"
+~*Numpad1::		fileappend time() "	n1	do`n", logfile, "UTF-8"
+~*Numpad1 up::	fileappend time() "	n1	up`n", logfile, "UTF-8"
+~*Numpad2::		fileappend time() "	n2	do`n", logfile, "UTF-8"
+~*Numpad2 up::	fileappend time() "	n2	up`n", logfile, "UTF-8"
+~*Numpad3::		fileappend time() "	n3	do`n", logfile, "UTF-8"
+~*Numpad3 up::	fileappend time() "	n3	up`n", logfile, "UTF-8"
+~*Numpad4::		fileappend time() "	n4	do`n", logfile, "UTF-8"
+~*Numpad4 up::	fileappend time() "	n4	up`n", logfile, "UTF-8"
+~*Numpad5::		fileappend time() "	n5	do`n", logfile, "UTF-8"
+~*Numpad5 up::	fileappend time() "	n5	up`n", logfile, "UTF-8"
+~*Numpad6::		fileappend time() "	n6	do`n", logfile, "UTF-8"
+~*Numpad6 up::	fileappend time() "	n6	up`n", logfile, "UTF-8"
+~*Numpad7::		fileappend time() "	n7	do`n", logfile, "UTF-8"
+~*Numpad7 up::	fileappend time() "	n7	up`n", logfile, "UTF-8"
+~*Numpad8::		fileappend time() "	n8	do`n", logfile, "UTF-8"
+~*Numpad8 up::	fileappend time() "	n8	up`n", logfile, "UTF-8"
+~*Numpad9::		fileappend time() "	n9	do`n", logfile, "UTF-8"
+~*Numpad9 up::	fileappend time() "	n9	up`n", logfile, "UTF-8"
 
-~*NumpadDot::		fileappend time() "	n,	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadDot up::	fileappend time() "	n,	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*NumpadDot::		fileappend time() "	n,	do`n", logfile, "UTF-8"
+~*NumpadDot up::	fileappend time() "	n,	up`n", logfile, "UTF-8"
 
-~*NumLock::		fileappend time() "	nl	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumLock up::	fileappend time() "	nl	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-
-~*NumpadDiv::		fileappend time() "	n/	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadDiv up::	fileappend time() "	n/	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadMult::		fileappend time() "	n*	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadMult up::	fileappend time() "	n*	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadAdd::		fileappend time() "	n+	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadAdd up::	fileappend time() "	n+	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadSub::		fileappend time() "	n-	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadSub up::	fileappend time() "	n-	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*NumpadDiv::		fileappend time() "	n/	do`n", logfile, "UTF-8"
+~*NumpadDiv up::	fileappend time() "	n/	up`n", logfile, "UTF-8"
+~*NumpadMult::		fileappend time() "	n*	do`n", logfile, "UTF-8"
+~*NumpadMult up::	fileappend time() "	n*	up`n", logfile, "UTF-8"
+~*NumpadAdd::		fileappend time() "	n+	do`n", logfile, "UTF-8"
+~*NumpadAdd up::	fileappend time() "	n+	up`n", logfile, "UTF-8"
+~*NumpadSub::		fileappend time() "	n-	do`n", logfile, "UTF-8"
+~*NumpadSub up::	fileappend time() "	n-	up`n", logfile, "UTF-8"
 
 
-~*NumpadEnter::		fileappend time() "	ner	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadEnter up::	fileappend time() "	ner	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*NumpadEnter::		fileappend time() "	ner	do`n", logfile, "UTF-8"
+~*NumpadEnter up::	fileappend time() "	ner	up`n", logfile, "UTF-8"
 
-~*LAlt::		fileappend time() "	<a	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*LAlt up::	fileappend time() "	<a	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RAlt::		fileappend time() "	>a	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RAlt up::	fileappend time() "	>a	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*LAlt::		fileappend time() "	<a	do`n", logfile, "UTF-8"
+~*LAlt up::	fileappend time() "	<a	up`n", logfile, "UTF-8"
+~*RAlt::		fileappend time() "	>a	do`n", logfile, "UTF-8"
+~*RAlt up::	fileappend time() "	>a	up`n", logfile, "UTF-8"
 
-~*LShift::		fileappend time() "	<s	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*LShift up::	fileappend time() "	<s	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RShift::		fileappend time() "	>s	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RShift up::	fileappend time() "	>s	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*LShift::		fileappend time() "	<s	do`n", logfile, "UTF-8"
+~*LShift up::	fileappend time() "	<s	up`n", logfile, "UTF-8"
+~*RShift::		fileappend time() "	>s	do`n", logfile, "UTF-8"
+~*RShift up::	fileappend time() "	>s	up`n", logfile, "UTF-8"
 	
-~*Volume_Mute::		fileappend time() "	su	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Volume_Mute up::	fileappend time() "	su	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Volume_Down::		fileappend time() "	s-	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Volume_Down up::	fileappend time() "	s-	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Volume_Up::		fileappend time() "	s+	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Volume_Up up::	fileappend time() "	s+	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Volume_Mute::		fileappend time() "	su	do`n", logfile, "UTF-8"
+~*Volume_Mute up::	fileappend time() "	su	up`n", logfile, "UTF-8"
+~*Volume_Down::		fileappend time() "	s-	do`n", logfile, "UTF-8"
+~*Volume_Down up::	fileappend time() "	s-	up`n", logfile, "UTF-8"
+~*Volume_Up::		fileappend time() "	s+	do`n", logfile, "UTF-8"
+~*Volume_Up up::	fileappend time() "	s+	up`n", logfile, "UTF-8"
 
-~*Launch_App2::		fileappend time() "	ca	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Launch_App2 up::	fileappend time() "	ca	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Launch_App2::		fileappend time() "	ca	do`n", logfile, "UTF-8"
+~*Launch_App2 up::	fileappend time() "	ca	up`n", logfile, "UTF-8"
 
-~*Browser_Refresh::		fileappend time() "	sy	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Browser_Refresh up::	fileappend time() "	sy	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Browser_Refresh::		fileappend time() "	sy	do`n", logfile, "UTF-8"
+~*Browser_Refresh up::	fileappend time() "	sy	up`n", logfile, "UTF-8"
 
-~*Home::		fileappend time() "	ho	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Home up::	fileappend time() "	ho	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*SC01A::		fileappend time() "	ğ	do`n", logfile, "UTF-8"
+~*SC01A up::	fileappend time() "	ğ	up`n", logfile, "UTF-8"
+~*SC01B::		fileappend time() "	ü	do`n", logfile, "UTF-8"
+~*SC01B up::	fileappend time() "	ü	up`n", logfile, "UTF-8"
+~*SC027::		fileappend time() "	ş	do`n", logfile, "UTF-8"
+~*SC027 up::	fileappend time() "	ş	up`n", logfile, "UTF-8"
+~*SC017::		fileappend time() "	ı	do`n", logfile, "UTF-8"
+~*SC017 up::	fileappend time() "	ı	up`n", logfile, "UTF-8"
+~*SC028::		fileappend time() "	i	do`n", logfile, "UTF-8"
+~*SC028 up::	fileappend time() "	i	up`n", logfile, "UTF-8"
+~*SC033::		fileappend time() "	ö	do`n", logfile, "UTF-8"
+~*SC033 up::	fileappend time() "	ö	up`n", logfile, "UTF-8"
+~*SC034::		fileappend time() "	ç	do`n", logfile, "UTF-8"
+~*SC034 up::	fileappend time() "	ç	up`n", logfile, "UTF-8"
 
-~*SC01A::		fileappend time() "	gg	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"	;ğ
-~*SC01A up::	fileappend time() "	gg	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"	;ğ
-~*SC01B::		fileappend time() "	ü	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC01B up::	fileappend time() "	ü	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC027::		fileappend time() "	ş	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC027 up::	fileappend time() "	ş	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC017::		fileappend time() "	ı	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC017 up::	fileappend time() "	ı	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC028::		fileappend time() "	i	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC028 up::	fileappend time() "	i	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC033::		fileappend time() "	ö	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC033 up::	fileappend time() "	ö	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC034::		fileappend time() "	ç	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC034 up::	fileappend time() "	ç	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*,::		fileappend time() "	,	do`n", logfile, "UTF-8"
+~*, up::	fileappend time() "	,	up`n", logfile, "UTF-8"
+~*.::		fileappend time() "	.	do`n", logfile, "UTF-8"
+~*. up::	fileappend time() "	.	up`n", logfile, "UTF-8"
+~*SC056::		fileappend time() "	<	do`n", logfile, "UTF-8"
+~*SC056 up::	fileappend time() "	<	up`n", logfile, "UTF-8"
+~*"::		fileappend time() "	`"	do`n", logfile, "UTF-8"
+~*" up::	fileappend time() "	`"	up`n", logfile, "UTF-8"
+~**::		fileappend time() "	*	do`n", logfile, "UTF-8"
+~** up::	fileappend time() "	*	up`n", logfile, "UTF-8"
+~*-::		fileappend time() "	-	do`n", logfile, "UTF-8"
+~*- up::	fileappend time() "	-	up`n", logfile, "UTF-8"
 
-~*,::		fileappend time() "	,	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*, up::	fileappend time() "	,	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*.::		fileappend time() "	.	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*. up::	fileappend time() "	.	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC056::		fileappend time() "	<	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*SC056 up::	fileappend time() "	<	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*"::		fileappend time() "	`"	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*" up::	fileappend time() "	`"	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~**::		fileappend time() "	*	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~** up::	fileappend time() "	*	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*-::		fileappend time() "	-	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*- up::	fileappend time() "	-	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*LControl::		fileappend time() "	<c	do`n", logfile, "UTF-8"
+~*LControl up::	fileappend time() "	<c	up`n", logfile, "UTF-8"
+~*RControl::		fileappend time() "	>c	do`n", logfile, "UTF-8"
+~*RControl up::	fileappend time() "	>c	up`n", logfile, "UTF-8"
 
-~*CapsLock::		fileappend time() "	cl	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*CapsLock up::	fileappend time() "	cl	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*LWin::		fileappend time() "	<w	do`n", logfile, "UTF-8"
+~*LWin up::	fileappend time() "	<w	up`n", logfile, "UTF-8"
+~*RWin::		fileappend time() "	>w	do`n", logfile, "UTF-8"
+~*RWin up::	fileappend time() "	>w	up`n", logfile, "UTF-8"
 
-~*LControl::		fileappend time() "	<c 	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*LControl up::	fileappend time() "	<c 	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RControl::		fileappend time() "	>c	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RControl up::	fileappend time() "	>c	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*NumpadDel::		fileappend time() "	nde	do`n", logfile, "UTF-8"
+~*NumpadDel up::	fileappend time() "	nde	up`n", logfile, "UTF-8"
 
-~*LWin::		fileappend time() "	<w	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*LWin up::	fileappend time() "	<w	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RWin::		fileappend time() "	>w	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*RWin up::	fileappend time() "	>w	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*Delete::		fileappend time() "	de	do`n", logfile, "UTF-8"
+~*Delete up::	fileappend time() "	de	up`n", logfile, "UTF-8"
 
-~*NumpadDel::		fileappend time() "	nde	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*NumpadDel up::	fileappend time() "	nde	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*q::		fileappend time() "	q	do`n", logfile, "UTF-8"
+~*q up::	fileappend time() "	q	up`n", logfile, "UTF-8"
+~*w::		fileappend time() "	w	do`n", logfile, "UTF-8"
+~*w up::	fileappend time() "	w	up`n", logfile, "UTF-8"
+~*e::		fileappend time() "	e	do`n", logfile, "UTF-8"
+~*e up::	fileappend time() "	e	up`n", logfile, "UTF-8"
+~*r::		fileappend time() "	r	do`n", logfile, "UTF-8"
+~*r up::	fileappend time() "	r	up`n", logfile, "UTF-8"
+~*t::		fileappend time() "	t	do`n", logfile, "UTF-8"
+~*t up::	fileappend time() "	t	up`n", logfile, "UTF-8"
+~*y::		fileappend time() "	y	do`n", logfile, "UTF-8"
+~*y up::	fileappend time() "	y	up`n", logfile, "UTF-8"
+~*u::		fileappend time() "	u	do`n", logfile, "UTF-8"
+~*u up::	fileappend time() "	u	up`n", logfile, "UTF-8"
+~*o::		fileappend time() "	o	do`n", logfile, "UTF-8"
+~*o up::	fileappend time() "	o	up`n", logfile, "UTF-8"
+~*p::		fileappend time() "	p	do`n", logfile, "UTF-8"
+~*p up::	fileappend time() "	p	up`n", logfile, "UTF-8"
+~*a::		fileappend time() "	a	do`n", logfile, "UTF-8"
+~*a up::	fileappend time() "	a	up`n", logfile, "UTF-8"
+~*s::		fileappend time() "	s	do`n", logfile, "UTF-8"
+~*s up::	fileappend time() "	s	up`n", logfile, "UTF-8"
+~*d::		fileappend time() "	d	do`n", logfile, "UTF-8"
+~*d up::	fileappend time() "	d	up`n", logfile, "UTF-8"
+~*f::		fileappend time() "	f	do`n", logfile, "UTF-8"
+~*f up::	fileappend time() "	f	up`n", logfile, "UTF-8"
+~*g::		fileappend time() "	g	do`n", logfile, "UTF-8"
+~*g up::	fileappend time() "	g	up`n", logfile, "UTF-8"
+~*h::		fileappend time() "	h	do`n", logfile, "UTF-8"
+~*h up::	fileappend time() "	h	up`n", logfile, "UTF-8"
+~*j::		fileappend time() "	j	do`n", logfile, "UTF-8"
+~*j up::	fileappend time() "	j	up`n", logfile, "UTF-8"
+~*k::		fileappend time() "	k	do`n", logfile, "UTF-8"
+~*k up::	fileappend time() "	k	up`n", logfile, "UTF-8"
+~*l::		fileappend time() "	l	do`n", logfile, "UTF-8"
+~*l up::	fileappend time() "	l	up`n", logfile, "UTF-8"
+~*z::		fileappend time() "	z	do`n", logfile, "UTF-8"
+~*z up::	fileappend time() "	z	up`n", logfile, "UTF-8"
+~*x::		fileappend time() "	x	do`n", logfile, "UTF-8"
+~*x up::	fileappend time() "	x	up`n", logfile, "UTF-8"
+~*c::		fileappend time() "	c	do`n", logfile, "UTF-8"
+~*c up::	fileappend time() "	c	up`n", logfile, "UTF-8"
+~*v::		fileappend time() "	v	do`n", logfile, "UTF-8"
+~*v up::	fileappend time() "	v	up`n", logfile, "UTF-8"
+~*b::		fileappend time() "	b	do`n", logfile, "UTF-8"
+~*b up::	fileappend time() "	b	up`n", logfile, "UTF-8"
+~*n::		fileappend time() "	n	do`n", logfile, "UTF-8"
+~*n up::	fileappend time() "	n	up`n", logfile, "UTF-8"
+~*m::		fileappend time() "	m	do`n", logfile, "UTF-8"
+~*m up::	fileappend time() "	m	up`n", logfile, "UTF-8"
 
-~*Delete::		fileappend time() "	de	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*Delete up::	fileappend time() "	de	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
+~*F1::		fileappend time() "	f1	do`n", logfile, "UTF-8"
+~*F1 up::	fileappend time() "	f1	up`n", logfile, "UTF-8"
+~*F2::		fileappend time() "	f2	do`n", logfile, "UTF-8"
+~*F2 up::	fileappend time() "	f2	up`n", logfile, "UTF-8"
+~*F3::		fileappend time() "	f3	do`n", logfile, "UTF-8"
+~*F3 up::	fileappend time() "	f3	up`n", logfile, "UTF-8"
+~*F4::		fileappend time() "	f4	do`n", logfile, "UTF-8"
+~*F4 up::	fileappend time() "	f4	up`n", logfile, "UTF-8"
+~*F5::		fileappend time() "	f5	do`n", logfile, "UTF-8"
+~*F5 up::	fileappend time() "	f5	up`n", logfile, "UTF-8"
+~*F6::		fileappend time() "	f6	do`n", logfile, "UTF-8"
+~*F6 up::	fileappend time() "	f6	up`n", logfile, "UTF-8"
+~*F7::		fileappend time() "	f7	do`n", logfile, "UTF-8"
+~*F7 up::	fileappend time() "	f7	up`n", logfile, "UTF-8"
+~*F8::		fileappend time() "	f8	do`n", logfile, "UTF-8"
+~*F8 up::	fileappend time() "	f8	up`n", logfile, "UTF-8"
+~*F9::		fileappend time() "	f9	do`n", logfile, "UTF-8"
+~*F9 up::	fileappend time() "	f9	up`n", logfile, "UTF-8"
+~*F10::		fileappend time() "	f10	do`n", logfile, "UTF-8"
+~*F10 up::	fileappend time() "	f10	up`n", logfile, "UTF-8"
+~*F11::		fileappend time() "	f11	do`n", logfile, "UTF-8"
+~*F11 up::	fileappend time() "	f11	up`n", logfile, "UTF-8"
+~*F12::		fileappend time() "	f12	do`n", logfile, "UTF-8"
+~*F12 up::	fileappend time() "	f12	up`n", logfile, "UTF-8"
+~*F13::		fileappend time() "	f13	do`n", logfile, "UTF-8"
+~*F13 up::	fileappend time() "	f13	up`n", logfile, "UTF-8"
+~*F14::		fileappend time() "	f14	do`n", logfile, "UTF-8"
+~*F14 up::	fileappend time() "	f14	up`n", logfile, "UTF-8"
+~*F15::		fileappend time() "	f15	do`n", logfile, "UTF-8"
+~*F15 up::	fileappend time() "	f15	up`n", logfile, "UTF-8"
+~*F16::		fileappend time() "	f16	do`n", logfile, "UTF-8"
+~*F16 up::	fileappend time() "	f16	up`n", logfile, "UTF-8"
+~*F17::		fileappend time() "	f17	do`n", logfile, "UTF-8"
+~*F17 up::	fileappend time() "	f17	up`n", logfile, "UTF-8"
+~*F18::		fileappend time() "	f18	do`n", logfile, "UTF-8"
+~*F18 up::	fileappend time() "	f18	up`n", logfile, "UTF-8"
+~*F19::		fileappend time() "	f19	do`n", logfile, "UTF-8"
+~*F19 up::	fileappend time() "	f19	up`n", logfile, "UTF-8"
+~*F20::		fileappend time() "	f20	do`n", logfile, "UTF-8"
+~*F20 up::	fileappend time() "	f20	up`n", logfile, "UTF-8"
+~*F21::		fileappend time() "	f21	do`n", logfile, "UTF-8"
+~*F21 up::	fileappend time() "	f21	up`n", logfile, "UTF-8"
+~*F22::		fileappend time() "	f22	do`n", logfile, "UTF-8"
+~*F22 up::	fileappend time() "	f22	up`n", logfile, "UTF-8"
+~*F23::		fileappend time() "	f23	do`n", logfile, "UTF-8"
+~*F23 up::	fileappend time() "	f23	up`n", logfile, "UTF-8"
 
-
-~*F1::		fileappend time() "	f1	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F1 up::	fileappend time() "	f1	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F2::		fileappend time() "	f2	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F2 up::	fileappend time() "	f2	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F3::		fileappend time() "	f3	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F3 up::	fileappend time() "	f3	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F4::		fileappend time() "	f4	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F4 up::	fileappend time() "	f4	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F5::		fileappend time() "	f5	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F5 up::	fileappend time() "	f5	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F6::		fileappend time() "	f6	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F6 up::	fileappend time() "	f6	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F7::		fileappend time() "	f7	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F7 up::	fileappend time() "	f7	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F8::		fileappend time() "	f8	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F8 up::	fileappend time() "	f8	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F9::		fileappend time() "	f9	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F9 up::	fileappend time() "	f9	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F10::		fileappend time() "	f10	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F10 up::	fileappend time() "	f10	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F11::		fileappend time() "	f11	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F11 up::	fileappend time() "	f11	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F12::		fileappend time() "	f12	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F12 up::	fileappend time() "	f12	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F13::		fileappend time() "	f13	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F13 up::	fileappend time() "	f13	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F14::		fileappend time() "	f14	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F14 up::	fileappend time() "	f14	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F15::		fileappend time() "	f15	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F15 up::	fileappend time() "	f15	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F16::		fileappend time() "	f16	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F16 up::	fileappend time() "	f16	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F17::		fileappend time() "	f17	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F17 up::	fileappend time() "	f17	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F18::		fileappend time() "	f18	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F18 up::	fileappend time() "	f18	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F19::		fileappend time() "	f19	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F19 up::	fileappend time() "	f19	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F20::		fileappend time() "	f20	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F20 up::	fileappend time() "	f20	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F21::		fileappend time() "	f21	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F21 up::	fileappend time() "	f21	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F22::		fileappend time() "	f22	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F22 up::	fileappend time() "	f22	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F23::		fileappend time() "	f23	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F23 up::	fileappend time() "	f23	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F24::		fileappend time() "	f24	do`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-~*F24 up::	fileappend time() "	f24	up`n", "C:\Users\ahmet\OneDrive\Desktop\log.txt"
-
-
+~*PgUp::		fileappend time() "	pu	do`n", logfile, "UTF-8"
+~*PgUp up::	fileappend time() "	pu	up`n", logfile, "UTF-8"
+~*PgDn::		fileappend time() "	pd	do`n", logfile, "UTF-8"
+~*PgDn up::	fileappend time() "	pd	up`n", logfile, "UTF-8"
